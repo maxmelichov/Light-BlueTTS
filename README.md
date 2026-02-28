@@ -33,9 +33,26 @@ uv run python benchmark_trt.py --style_json voices/female1.json --steps 32
 uv run python test_gpu_onnx.py --compare --runs 3
 ```
 
-## Required Models
+## Model Weights
 
-Place in `onnx_models/`: `text_encoder.onnx`, `vector_estimator.onnx`, `vocoder.onnx`, `duration_predictor.onnx`, `stats.npz`, `uncond.npz`. Also needed: [`phonikud-1.0.onnx`](https://huggingface.co/thewh1teagle/phonikud-onnx/blob/main/phonikud-1.0.onnx).
+Download the TTS weights from [notmax123/LightBlue](https://huggingface.co/notmax123/LightBlue) and the Phonikud model from [thewh1teagle/phonikud-onnx](https://huggingface.co/thewh1teagle/phonikud-onnx).
+
+Your project directory should look like this:
+
+```
+Light-BlueTTS/
+├── phonikud-1.0.onnx              # from phonikud-onnx repo
+└── onnx_models/
+    ├── backbone.onnx               # flow-matching backbone
+    ├── backbone_keys.onnx          # backbone with style_keys (for CFG)
+    ├── text_encoder.onnx
+    ├── reference_encoder.onnx
+    ├── vocoder.onnx
+    ├── length_pred.onnx            # duration predictor
+    ├── length_pred_style.onnx      # duration predictor (style-conditioned)
+    ├── stats.npz                   # normalization statistics
+    └── uncond.npz                  # unconditional embeddings for CFG
+```
 
 ## License
 
