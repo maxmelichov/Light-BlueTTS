@@ -25,6 +25,7 @@ wav = tts.infer("שלום עולם", style_json_path="voices/female1.json")
 ```
 
 ## TensorRT
+ONLY FOR NVIDIA GPUS!
 
 ```bash
 uv run python create_tensorrt.py --onnx_dir onnx_models --engine_dir trt_engines --precision fp16
