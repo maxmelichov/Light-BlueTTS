@@ -126,8 +126,8 @@ class HebrewTTS:
         self._vf_model_name = vf_name.replace(".onnx", "")
         self.vf_sess = self._load_session(vf_name)
         self.vocoder_sess = self._load_session("vocoder.onnx")
-        self.dp_sess = self._load_session("lenght_pred.onnx", required=False)
-        self.dp_style_sess = self._load_session("lenght_predictor_style.onnx", required=False)
+        self.dp_sess = self._load_session("length_pred.onnx", required=False)
+        self.dp_style_sess = self._load_session("length_pred_style.onnx", required=False)
         
         if self.ref_enc_sess is None:
              print("Warning: Reference Encoder ONNX not found. You must provide style_json for inference.")
@@ -549,7 +549,7 @@ class HebrewTTS:
         T_lat = None
 
         if style_dp_input is not None and self.dp_style_sess is not None:
-            dur_out = self._run(self.dp_style_sess, {"text_ids": text_ids, "style_dp": style_dp_input, "text_mask": text_mask}, "lenght_predictor_style")
+            dur_out = self._run(self.dp_style_sess, {"text_ids": text_ids, "style_dp": style_dp_input, "text_mask": text_mask}, "length_pred_style")
             raw_val = float(np.squeeze(dur_out[0]))
             if np.isfinite(raw_val):
                 T_lat = int(np.round(raw_val / max(speed, 1e-6)))
@@ -564,7 +564,7 @@ class HebrewTTS:
                     "text_mask": text_mask,
                     "ref_mask": np.ones((1, 1, ref_len), dtype=np.float32),
                 },
-                "lenght_pred",
+                "length_pred",
             )
             raw_val = float(np.squeeze(dur_out[0]))
             if np.isfinite(raw_val):

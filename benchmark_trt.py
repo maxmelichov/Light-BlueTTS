@@ -145,12 +145,12 @@ def benchmark(text_input, z_ref_path, out_wav, style_json_path=None, steps=32, c
         text_enc = TRTEngine("trt_engines/text_encoder.trt")
         
         dp = None
-        if os.path.exists("trt_engines/lenght_pred.trt"):
-            dp = TRTEngine("trt_engines/lenght_pred.trt")
+        if os.path.exists("trt_engines/length_pred.trt"):
+            dp = TRTEngine("trt_engines/length_pred.trt")
 
         dp_style = None
-        if os.path.exists("trt_engines/lenght_predictor_style.trt"):
-            dp_style = TRTEngine("trt_engines/lenght_predictor_style.trt")
+        if os.path.exists("trt_engines/length_pred_style.trt"):
+            dp_style = TRTEngine("trt_engines/length_pred_style.trt")
 
         vf = TRTEngine("trt_engines/backbone.trt")
         vocoder = TRTEngine("trt_engines/vocoder.trt")
