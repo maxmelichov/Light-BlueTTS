@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# ONNX models (large binaries)
+onnx_models/
+*.onnx
+
+# TensorRT engines
+trt_engines/
+*.trt
+.trt_cache/
+
+# Audio outputs
+*.wav
+
+# Model checkpoints
+*.pt
+*.npy
+*.npz
+!voices/*.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+tts.json
+tts.json

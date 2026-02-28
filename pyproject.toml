@@ -1,0 +1,62 @@
+[project]
+name = "light-blue-tts"
+version = "0.1.0"
+description = "Hebrew Text-to-Speech inference using ONNX and TensorRT"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+
+dependencies = [
+    "numpy",
+    "onnxruntime",
+    "soundfile",
+    "phonikud",
+    "phonikud-onnx",
+    "torch>=2.10.0",
+    "onnx>=1.20.1",
+    "torchaudio>=2.10.0",
+]
+
+[project.optional-dependencies]
+torch = [
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+]
+gpu = [
+    "onnxruntime-gpu",
+]
+tensorrt = [
+    "tensorrt",
+    "torch>=2.1.0",
+]
+export = [
+    "onnx>=1.17.0",
+    "torch>=2.1.0",
+]
+dev = [
+    "ruff",
+    "pytest",
+]
+
+[project.scripts]
+light-blue-tts = "run_onnx_inference:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = [
+    "hebrew_inference_helper.py",
+    "run_onnx_inference.py",
+    "text_vocab.py",
+    "utils.py",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
