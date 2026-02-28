@@ -37,6 +37,13 @@ uv run python test_gpu_onnx.py --compare --runs 3
 
 Download the TTS weights from [notmax123/LightBlue](https://huggingface.co/notmax123/LightBlue) and the Phonikud model from [thewh1teagle/phonikud-onnx](https://huggingface.co/thewh1teagle/phonikud-onnx).
 
+```bash
+uv run hf download notmax123/LightBlue \
+  --repo-type onnx_model \
+  --local-dir ./onnx_model
+wget https://huggingface.co/thewh1teagle/phonikud-onnx/resolve/main/phonikud-1.0.int8.onnx
+```
+
 Your project directory should look like this:
 
 ```
