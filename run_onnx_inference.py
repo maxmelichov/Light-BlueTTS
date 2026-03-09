@@ -47,7 +47,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--onnx_dir", default="onnx_models")
     parser.add_argument("--config", default="tts.json", help="Path to tts.json config")
-    parser.add_argument("--phonikud_path", default="phonikud-1.0.onnx")
+    parser.add_argument("--phonikud_path", default="phonikud-1.0.int8.onnx")
     parser.add_argument("--z_ref", default=None)
     parser.add_argument("--style_json", default="voices/male1.json")
     parser.add_argument("--out", default="onnx_out.wav")
