@@ -26,7 +26,7 @@ class TTSConfig:
     # Model Paths
     onnx_dir: str = "onnx_models"
     config_path: str = "tts.json"
-    phonikud_path: str = "phonikud-1.0.onnx"
+    phonikud_path: str = "phonikud-1.0.int8.onnx"
     use_gpu: bool = False
     use_int8: bool = False
 
@@ -716,7 +716,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--onnx_dir", default="onnx_models")
-    parser.add_argument("--phonikud_path", default="phonikud-1.0.onnx")
+    parser.add_argument("--phonikud_path", default="phonikud-1.0.int8.onnx")
     parser.add_argument("--text", default="שלום עולם")
     parser.add_argument("--z_ref", default=None)
     parser.add_argument("--style_json", default="voices/male1.json")
