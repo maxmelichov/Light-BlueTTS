@@ -9,8 +9,8 @@ import soundfile as sf
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from text_vocab import text_to_indices
 from utils import load_ttl_config
+from lightblue_onnx._vocab import text_to_indices
 
 # Create a logger
 logger = trt.Logger(trt.Logger.WARNING)

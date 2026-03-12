@@ -6,6 +6,7 @@ dist/
 build/
 .venv/
 venv/
+*.pyc
 
 # ONNX models (large binaries)
 onnx_models/
@@ -37,3 +38,6 @@ Thumbs.db
 *.log
 tts.json
 tts.json
+*.onnx
+voices/
+*.tar.gz

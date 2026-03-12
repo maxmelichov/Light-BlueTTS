@@ -1,3 +1,13 @@
+# Before building:
+#
+#   1. Download model weights:
+#      https://huggingface.co/notmax123/LightBlue       -> onnx_models/, voices/, tts.json
+#      https://huggingface.co/thewh1teagle/phonikud-onnx -> phonikud-1.0.onnx
+#
+#   2. Build and run:
+#      docker build -t lightblue-tts .
+#      docker run --rm lightblue-tts --text "שלום עולם"
+
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -10,30 +20,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Install python deps
+# Install python deps (package + app-level phonemization deps)
 COPY pyproject.toml uv.lock /app/
 RUN uv sync --frozen --no-dev --no-install-project
+RUN uv pip install phonikud phonikud-onnx
 
-# Copy models + assets + code
+# Copy package + app + models + assets
+COPY src/ /app/src/
+COPY examples/ /app/examples/
 COPY onnx_models /app/onnx_models
 COPY phonikud-1.0.onnx /app/phonikud-1.0.onnx
 COPY voices /app/voices
 COPY tts.json /app/tts.json
-COPY *.npy /app/
-
-COPY utils.py /app/utils.py
-COPY text_vocab.py /app/text_vocab.py
-COPY hebrew_inference_helper.py /app/hebrew_inference_helper.py
-COPY run_onnx_inference.py /app/run_onnx_inference.py
 
 # Runtime environment
-ENV ONNX_DIR=/app/onnx_models \
-    PHONIKUD_PATH=/app/phonikud-1.0.onnx \
-    DEFAULT_STYLE_JSON=/app/voices/male1.json \
-    SAMPLE_RATE=44100 \
-    PYTHONUNBUFFERED=1 \
+ENV PYTHONUNBUFFERED=1 \
     ORT_DISABLE_CPU_AFFINITY=1 \
     ORT_INTRA=4 \
     ORT_INTER=1
 
-CMD ["uv", "run", "python", "-u", "run_onnx_inference.py"]
+CMD ["uv", "run", "python", "-u", "examples/app.py"]
