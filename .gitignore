@@ -36,8 +36,6 @@ Thumbs.db
 
 # Misc
 *.log
-tts.json
-tts.json
 *.onnx
 voices/
 *.tar.gz
