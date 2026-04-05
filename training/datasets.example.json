@@ -1,0 +1,74 @@
+{
+  "output":       "combined_dataset.csv",
+  "clean_output": "combined_dataset_cleaned.csv",
+
+  "espeak_lang_map": {
+    "en": "en-us",
+    "es": "es",
+    "de": "de",
+    "fr": "fr"
+  },
+
+  "datasets": [
+    {
+      "comment": "Single CSV, one speaker",
+      "csv": "/path/to/speaker1.csv",
+      "audio_dir": "/path/to/speaker1/wavs",
+      "speaker_id": 1,
+      "lang": "he"
+    },
+    {
+      "comment": "Filter rows by a boolean column",
+      "csv": "/path/to/filtered_data/filter_summary.csv",
+      "audio_dir": "/path/to/filtered_data",
+      "speaker_id": 2,
+      "lang": "he",
+      "filter_col": "passed_filter"
+    },
+    {
+      "comment": "Non-standard CSV format (pipe-separated, no header, index-based filenames)",
+      "csv": "/path/to/metadata.csv",
+      "audio_dir": "/path/to/wavs",
+      "speaker_id": 3,
+      "lang": "he",
+      "csv_kwargs": { "sep": "|", "header": null, "names": ["index", "whisper_phonemes"] },
+      "filename_template": "{index}.wav"
+    },
+    {
+      "comment": "Non-standard CSV with filenames that need a directory prefix",
+      "csv": "/path/to/metadata_en.csv",
+      "audio_dir": "/path/to/en/wavs",
+      "speaker_id": 3,
+      "lang": "en",
+      "csv_kwargs": { "sep": "|", "header": null, "names": ["filename", "whisper_phonemes", "wer_score", "original_text"] },
+      "extra_cols": { "phonemized": true }
+    },
+    {
+      "comment": "Strip a path prefix, then split one CSV into multiple speakers by subdir pattern",
+      "csv": "/path/to/best_data.csv",
+      "strip_prefix": "/old/absolute/prefix/to/remove/",
+      "lang": "he",
+      "splits": [
+        { "pattern": "dataset_a", "speaker_id": 10 },
+        { "pattern": "dataset_b", "speaker_id": 11 },
+        { "pattern": "dataset_c", "speaker_id": 12 }
+      ]
+    },
+    {
+      "comment": "LibriTTS-style directory tree (speaker/chapter/*.normalized.txt + *.wav)",
+      "type": "libritts",
+      "base_dir": "/path/to/LibriTTS",
+      "splits": [
+        "train-clean-100",
+        "train-clean-360",
+        "train-other-500",
+        "dev-clean",
+        "dev-other",
+        "test-clean",
+        "test-other"
+      ],
+      "speaker_offset": 1000,
+      "lang": "en"
+    }
+  ]
+}
