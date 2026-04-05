@@ -7,9 +7,16 @@ import numpy as np
 import torchaudio
 import torch.nn.functional as F
 import string
+
 # Ensure these local modules exist in your project structure
-from data.text_vocab import text_to_indices, VOCAB_LIST, normalize_text
+from data.text_vocab import text_to_indices, VOCAB_LIST, normalize_text, LANG_ID
 from data.audio_utils import ensure_sr
+
+# espeak language codes for non-Hebrew languages
+_ESPEAK_LANG = {
+    "en": "en-us",
+    "es": "es",
+}
 
 class Text2LatentDataset(Dataset):
     """
@@ -19,6 +26,8 @@ class Text2LatentDataset(Dataset):
     - Returns full utterances (cropping happens in training loop/collate).
     - Prioritizes Self-Reference (ref_wav = target_wav) to match the
       "randomly cropping input audio" strategy.
+    - Text is pre-processed (normalized and phonemized) in __init__ 
+      to prevent DataLoader bottlenecks during training.
     """
 
     def __init__(
@@ -26,15 +35,17 @@ class Text2LatentDataset(Dataset):
         metadata_path: str,
         sample_rate: int = 44100,
         hop_length: int = 512,
-        max_wav_len: int = None,   # e.g., 44100 * 20
+        max_wav_len: int = None,      # e.g., 44100 * 20
         max_text_len: int = None,
         cross_ref_prob: float = 0.5,  # Probability of cross-utterance same-speaker reference
+        default_lang: str = "he",     # Fallback language if CSV has no 'lang' column
     ):
         self.sample_rate = sample_rate
         self.hop_length = hop_length
         self.max_wav_len = max_wav_len
         self.max_text_len = max_text_len
         self.cross_ref_prob = cross_ref_prob
+        self.default_lang = default_lang
 
         # --- 1. Load Metadata ---
         if not os.path.exists(metadata_path):
@@ -75,24 +86,57 @@ class Text2LatentDataset(Dataset):
         # Drop empty text
         self.df = self.df.dropna(subset=['text'])
 
-        # --- 2. Normalize Text & Validate ---
-        self.df['text'] = self.df['text'].apply(normalize_text)
+        # --- 2. Language setup ---
+        if 'lang' not in self.df.columns:
+            self.df['lang'] = self.default_lang
+        else:
+            self.df['lang'] = self.df['lang'].fillna(self.default_lang)
+            unknown_langs = set(self.df['lang']) - set(LANG_ID.keys())
+            if unknown_langs:
+                print(f"[Dataset] Warning: Unknown language codes {unknown_langs}, falling back to '{self.default_lang}'")
+                self.df.loc[~self.df['lang'].isin(LANG_ID), 'lang'] = self.default_lang
+
+        # --- 2b. Batch Pre-processing (Normalization & Phonemization) ---
         
-        # Check vocab coverage
-        all_text = "".join(self.df["text"].astype(str).tolist())
-        missing = set(all_text) - set(VOCAB_LIST)
+        # Hebrew: normalize text upfront
+        he_mask = self.df['lang'] == 'he'
+        if he_mask.any():
+            self.df.loc[he_mask, 'text'] = self.df[he_mask].apply(
+                lambda row: normalize_text(row['text'], lang=row['lang']), axis=1
+            )
+
+        # Non-Hebrew: phonemize only rows not already pre-computed by combine_datasets.py
+        non_he_mask = self.df['lang'] != 'he'
+        if 'phonemized' in self.df.columns:
+            needs_phonemization = non_he_mask & ~self.df['phonemized'].fillna(False).astype(bool)
+        else:
+            needs_phonemization = non_he_mask
+
+        if needs_phonemization.any():
+            self._phonemize_with_espeak(needs_phonemization)
+            self.df.loc[needs_phonemization, 'text'] = self.df[needs_phonemization].apply(
+                lambda row: normalize_text(row['text'], lang=row['lang']), axis=1
+            )
+        elif non_he_mask.any():
+            print(f"[Dataset] Skipping espeak — {non_he_mask.sum()} non-Hebrew rows already phonemized.")
+
+        # Check vocab coverage for Hebrew only
+        all_he_text = "".join(self.df.loc[he_mask, "text"].astype(str).tolist())
+        missing = set(all_he_text) - set(VOCAB_LIST)
         if missing:
             print(f"[Dataset] Warning: Missing chars in VOCAB: {repr(''.join(sorted(missing)))}")
 
-        # Strict Filter: Drop rows producing unknown token ID (0)
-        def has_unknown(text: str) -> bool:
-            ids = text_to_indices(str(text))
-            return any(i == 0 for i in ids)
+        # Strict Filter for Hebrew only
+        def has_unknown(row) -> bool:
+            ids = text_to_indices(str(row['text']), lang=str(row['lang']))
+            return any(i == 0 for i in ids[1:])
 
-        mask_valid_ids = ~self.df['text'].apply(has_unknown)
-        if (~mask_valid_ids).sum() > 0:
-            print(f"[Dataset] Dropping {(~mask_valid_ids).sum()} samples with unknown tokens.")
-        self.df = self.df[mask_valid_ids].reset_index(drop=True)
+        he_rows = self.df[he_mask]
+        if not he_rows.empty:
+            bad_he = he_rows.apply(has_unknown, axis=1)
+            if bad_he.sum() > 0:
+                print(f"[Dataset] Dropping {bad_he.sum()} Hebrew samples with unknown tokens.")
+                self.df = self.df.drop(he_rows[bad_he].index).reset_index(drop=True)
 
         # --- 3. Length Filtering ---
         if self.max_text_len is not None:
@@ -117,6 +161,38 @@ class Text2LatentDataset(Dataset):
         # Map speaker_id -> indices (useful for potential future cross-ref curriculum)
         self.speaker_to_indices = {k: v for k, v in self.df.groupby('speaker_id').indices.items()}
         print(f"[Dataset] Loaded {len(self.df)} samples across {len(self.speaker_to_indices)} speakers.")
+
+    def _phonemize_with_espeak(self, mask):
+        """Batch-phonemize non-Hebrew rows using espeak-ng via the phonemizer library."""
+        try:
+            from phonemizer.backend import EspeakBackend
+            from phonemizer.separator import Separator
+        except ImportError:
+            raise ImportError(
+                "phonemizer is required for non-Hebrew TTS data. "
+                "Install it with: pip install phonemizer"
+            )
+
+        sep = Separator(phone='', word=' ', syllable='')
+
+        for lang_code in self.df.loc[mask, 'lang'].unique():
+            lang_mask = mask & (self.df['lang'] == lang_code)
+            espeak_lang = _ESPEAK_LANG.get(lang_code, lang_code)
+            texts = self.df.loc[lang_mask, 'text'].tolist()
+
+            print(f"[Dataset] Batch phonemizing {len(texts)} '{lang_code}' samples with espeak ({espeak_lang})...")
+            backend = EspeakBackend(
+                espeak_lang,
+                preserve_punctuation=True,
+                with_stress=True,
+                language_switch='remove-flags',
+            )
+            ipa_texts = backend.phonemize(
+                texts, 
+                separator=sep, 
+                njobs=os.cpu_count() # <--- ADD THIS
+            )
+            self.df.loc[lang_mask, 'text'] = ipa_texts
 
     @property
     def speaker_ids(self):
@@ -208,20 +284,15 @@ class Text2LatentDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
+        # Text is already fully phonemized and normalized from __init__
         text = str(row['text']).strip()
         speaker_id = int(row['speaker_id'])
-        
+        lang = str(row.get('lang', self.default_lang))
+
         # 1. Load Target Wav
         wav = self._load_wav_by_index(idx)
         
         # 2. Reference Audio Strategy (Zero-Shot Training)
-        # SupertonicTTS (Sec 4.2): reference from same speaker.
-        # Self-ref: random crop of target (masking prevents copying).
-        # Cross-ref: different utterance from same speaker (teaches
-        #   the reference encoder to extract general speaker identity).
-        # Mix of both gives alignment stability (self-ref) + zero-shot
-        # generalization (cross-ref).
-        
         same_speaker_indices = self.speaker_to_indices.get(speaker_id, [])
         # Cross-utterance reference: pick a different utterance from same speaker
         use_cross_ref = (
@@ -253,7 +324,7 @@ class Text2LatentDataset(Dataset):
         ref_speaker_id = speaker_id
 
         # 3. Text to Indices
-        text_ids = torch.tensor(text_to_indices(text), dtype=torch.long)
+        text_ids = torch.tensor(text_to_indices(text, lang=lang), dtype=torch.long)
         
         return wav, text_ids, speaker_id, ref_wav, is_self_ref, ref_speaker_id
 

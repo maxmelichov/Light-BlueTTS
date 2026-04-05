@@ -169,14 +169,14 @@ LANG_ID: dict[str, int] = {
     "he": LANG_REGION_START + 0,   # 244 — Hebrew
     "en": LANG_REGION_START + 1,   # 245 — English
     # --- add new languages below, in any order ---
-    # "es": LANG_REGION_START + 2,   # 246 — Spanish
+    "es": LANG_REGION_START + 2,   # 246 — Spanish
     # "fr": LANG_REGION_START + 3,  # 247 — French
     # "ar": LANG_REGION_START + 4,  # 248 — Arabic
     # "pt": LANG_REGION_START + 5,  # 249 — Portuguese
     # "ko": LANG_REGION_START + 6,  # 250 — Korean
     # "ja": LANG_REGION_START + 7,  # 251 — Japanese
-    # "de": LANG_REGION_START + 8,  # 252 — German
-    # "it": LANG_REGION_START + 9,  # 253 — Italian
+    "de": LANG_REGION_START + 8,   # 252 — German
+    "it": LANG_REGION_START + 9,   # 253 — Italian
     # "ru": LANG_REGION_START + 10, # 254 — Russian
     # "zh": LANG_REGION_START + 11, # 255 — Chinese
     # "hi": LANG_REGION_START + 12, # 256 — Hindi
@@ -257,7 +257,7 @@ def normalize_text(text: str, lang: str = "he") -> str:
               are only applied when lang == "he".
     """
     text = text.strip()
-    text = uni_normalize("NFKD", text)
+    text = uni_normalize("NFD", text)
 
     # Universal replacements (fancy quotes/dashes → ASCII equivalents)
     replacements = {
